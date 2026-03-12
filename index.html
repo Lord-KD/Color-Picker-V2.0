@@ -1,0 +1,1921 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hue & Sat | Anurag</title>
+    <meta name="description" content="Professional color picker & palette tool">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#4F46E5">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: { zinc: { 950: '#09090b' } }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        :root {
+            --accent: #4F46E5;
+            --transition: 0.15s cubic-bezier(0.25, 1, 0.5, 1);
+        }
+
+        /* ===== THEME (dark only) ===== */
+        body {
+            --bg-primary: #09090b;
+            --bg-secondary: #18181b;
+            --bg-panel: rgba(0,0,0,0.4);
+            --bg-card: rgba(0,0,0,0.3);
+            --text-primary: #fafafa;
+            --text-secondary: #a1a1aa;
+            --border: rgba(255,255,255,0.07);
+            --border-strong: rgba(255,255,255,0.15);
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            transition: background 0.3s, color 0.3s;
+        }
+
+        /* ===== SCROLLBAR ===== */
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 10px; }
+
+        /* ===== SLIDERS ===== */
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%; height: 6px;
+            background: var(--border-strong);
+            border-radius: 999px;
+            cursor: pointer; margin: 0; outline: none;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 20px; width: 20px;
+            border-radius: 50%;
+            background: #ffffff;
+            cursor: pointer; margin-top: -7px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.4), 0 0 0 1px rgba(0,0,0,0.1);
+            transition: transform var(--transition), box-shadow var(--transition);
+        }
+        input[type=range]:hover::-webkit-slider-thumb { transform: scale(1.1); }
+        input[type=range]:active::-webkit-slider-thumb { transform: scale(0.95); box-shadow: 0 0 0 4px rgba(255,255,255,0.2); }
+        input[type=range]::-webkit-slider-runnable-track { height: 6px; background: transparent; border-radius: 999px; }
+        input[type=range]::-moz-range-thumb {
+            height: 20px; width: 20px; border: none; border-radius: 50%;
+            background: #ffffff; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+        }
+        .slider-sm { height: 4px !important; }
+        .slider-sm::-webkit-slider-thumb { height: 14px !important; width: 14px !important; margin-top: -5px !important; }
+
+        /* ===== GLASS PANEL ===== */
+        .glass {
+            background: var(--bg-panel);
+            border: 1px solid var(--border);
+        }
+
+        /* ===== HIDDEN ===== */
+        .hidden-display { display: none !important; }
+
+        /* ===== HEX INPUT ===== */
+        .hex-input {
+            background: transparent;
+            border: none;
+            outline: none;
+            font-family: 'JetBrains Mono', monospace;
+            color: inherit;
+            text-align: center;
+            width: 100%;
+        }
+
+
+        /* ===== DRAG DROP ===== */
+        #drop-zone.drag-over {
+            border-color: var(--accent) !important;
+            background: rgba(79,70,229,0.1) !important;
+        }
+
+        /* ===== MODAL ===== */
+        .modal-overlay {
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,0.7);
+            z-index: 500;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .modal-box {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-strong);
+            border-radius: 16px;
+            padding: 24px;
+            max-width: 480px; width: 90%;
+            max-height: 90vh; overflow-y: auto;
+        }
+
+        /* ===== ANIMATIONS ===== */
+        @keyframes fadeSlideIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .anim-in { animation: fadeSlideIn 0.2s ease forwards; }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .spinner { animation: spin 0.8s linear infinite; }
+
+        /* ===== PWA INSTALL BANNER ===== */
+        #pwa-banner {
+            position: fixed; bottom: 24px; right: 24px;
+            z-index: 200;
+            max-width: 320px;
+        }
+
+        /* ===== CMYK SWATCHES ===== */
+        .cmyk-swatch {
+            height: 40px; border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 11px; font-family: 'JetBrains Mono', monospace;
+            font-weight: 500;
+        }
+
+        /* ===== HISTORY ===== */
+        .history-item {
+            width: 32px; height: 32px; border-radius: 8px;
+            cursor: pointer; border: 2px solid transparent;
+            transition: all var(--transition);
+            flex-shrink: 0;
+        }
+        .history-item:hover { transform: scale(1.15); border-color: white; }
+
+        /* ===== LIGHT MODE overrides ===== */
+
+    </style>
+</head>
+<body class="h-screen w-full font-sans overflow-hidden selection:bg-indigo-500 selection:text-white">
+
+    <!-- Background — fixed behind everything, never participates in layout -->
+    <div id="app-background" class="fixed inset-0 transition-colors duration-700" style="background-color:#4F46E5;z-index:0;">
+        <div id="bg-gradient-overlay" class="absolute inset-0 bg-gradient-to-tr from-black/30 to-transparent pointer-events-none transition-opacity duration-300"></div>
+        <div id="bg-texture-overlay" class="absolute inset-0 pointer-events-none transition-opacity duration-300" style="opacity:0.03;background-image:url('data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'%23ffffff\' fill-opacity=\'1\'%3E%3Cpath d=\'M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\'/%3E%3C/g%3E%3C/svg%3E')"></div>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast" class="fixed top-6 left-1/2 -translate-x-1/2 z-[300] transition-all duration-300 opacity-0 -translate-y-4 pointer-events-none">
+        <div class="bg-black/90 backdrop-blur-md text-white px-5 py-2.5 rounded-full shadow-2xl flex items-center gap-2 border border-white/10">
+            <i data-lucide="check" class="w-3.5 h-3.5 text-green-400"></i>
+            <span id="toast-message" class="text-sm font-medium">Action Successful</span>
+        </div>
+    </div>
+
+    <!-- PWA Install Banner -->
+    <div id="pwa-banner" class="hidden">
+        <div class="glass rounded-2xl p-4 shadow-2xl anim-in">
+            <div class="flex items-start gap-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-pink-500 to-indigo-500 flex-shrink-0 flex items-center justify-center">
+                    <i data-lucide="download" class="w-5 h-5 text-white"></i>
+                </div>
+                <div class="flex-1">
+                    <p class="text-sm font-semibold" style="color:var(--text-primary)">Install Hue&Sat</p>
+                    <p class="text-xs mt-0.5" style="color:var(--text-secondary)">Use offline, install as an app</p>
+                </div>
+                <button onclick="dismissPwa()" style="color:var(--text-secondary)"><i data-lucide="x" class="w-4 h-4"></i></button>
+            </div>
+            <div class="flex gap-2 mt-3">
+                <button onclick="installPwa()" class="flex-1 bg-indigo-500 hover:bg-indigo-600 text-white text-xs font-semibold py-2 rounded-lg transition-colors">Install</button>
+                <button onclick="dismissPwa()" class="flex-1 text-xs font-medium py-2 rounded-lg transition-colors" style="background:var(--border);color:var(--text-secondary)">Later</button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ===== MAIN APP ===== -->
+    <div class="fixed inset-0 z-10 flex">
+
+        <!-- LEFT: Main Content -->
+        <div class="flex-1 flex flex-col relative overflow-hidden">
+
+            <!-- Header -->
+            <header id="app-header" class="h-14 flex items-center justify-between px-6 border-b shrink-0" style="border-color:rgba(255,255,255,0.08); background:rgba(0,0,0,0.55);">
+                <div class="flex items-center gap-2">
+                    <div class="w-4 h-4 rounded bg-gradient-to-br from-pink-500 to-indigo-500"></div>
+                    <span class="font-bold tracking-tight text-base drop-shadow-md">Hue&amp;Sat</span>
+                </div>
+
+                <!-- View Tabs -->
+                <div class="flex rounded-full p-0.5 border" style="background:var(--bg-card);border-color:var(--border);">
+                    <button id="btn-view-picker" onclick="switchView('picker')" class="px-4 py-1.5 rounded-full text-sm font-medium transition-all bg-white/10 text-white shadow-sm">Picker</button>
+                    <button id="btn-view-grid" onclick="switchView('grid')" class="px-4 py-1.5 rounded-full text-sm font-medium transition-all text-zinc-400 hover:text-white">Grid</button>
+                </div>
+
+                <!-- Header Actions -->
+                <div class="flex items-center gap-2">
+                    <!-- History -->
+                    <button onclick="openModal('history')" title="Recent colors" class="p-2 rounded-lg transition-colors hover:bg-white/10" style="color:var(--text-secondary)">
+                        <i data-lucide="clock" class="w-4 h-4"></i>
+                    </button>
+                    <!-- Export -->
+                    <button onclick="openModal('export')" class="flex items-center gap-1.5 px-3 py-1.5 bg-white text-black rounded-lg hover:bg-zinc-100 transition-colors text-sm font-semibold shadow-lg">
+                        <i data-lucide="download" class="w-3.5 h-3.5"></i>
+                        Export
+                    </button>
+                </div>
+            </header>
+
+            <!-- ===== PICKER VIEW ===== -->
+            <main id="view-picker" class="flex-1 flex flex-col items-center justify-center p-8 pb-24 relative overflow-hidden">
+
+                <!-- Color History Bar -->
+                <div id="history-bar" class="flex gap-1.5 mb-6 flex-wrap justify-center max-w-xs"></div>
+
+                <!-- Main Color Display -->
+                <div class="text-center flex flex-col items-center group">
+                    <div id="main-color-display"
+                        class="text-7xl md:text-8xl font-bold tracking-tighter font-mono cursor-pointer select-all mb-1 transition-transform hover:scale-105 duration-300"
+                        onclick="copyToClipboard(state.activeColor)"
+                        contenteditable="true"
+                        spellcheck="false"
+                        id="hex-editable"
+                        title="Click to copy · Type to edit">
+                        #4F46E5
+                    </div>
+                    <div id="color-name-display" class="mb-3 text-base font-medium tracking-widest uppercase opacity-80"></div>
+                    <div id="info-container" class="flex items-center gap-4 font-mono text-xs opacity-70 flex-wrap justify-center">
+                        <span id="rgb-display" class="cursor-pointer hover:opacity-100" onclick="copyToClipboard(document.getElementById('rgb-display').innerText)" title="Click to copy">rgb(79, 70, 229)</span>
+                        <span id="hsl-display" class="cursor-pointer hover:opacity-100" onclick="copyToClipboard(document.getElementById('hsl-display').innerText)" title="Click to copy">hsl(243°, 75%, 59%)</span>
+                        <span id="cmyk-display" class="cursor-pointer hover:opacity-100" onclick="copyToClipboard(document.getElementById('cmyk-display').innerText)" title="Click to copy">cmyk(66%, 69%, 0%, 10%)</span>
+                    </div>
+                </div>
+
+                <!-- Floating Dock -->
+                <div class="absolute bottom-6 left-1/2 -translate-x-1/2 w-[95%] max-w-2xl">
+                    <div id="picker-dock" class="rounded-3xl p-5 shadow-2xl flex flex-col gap-5" style="background:rgba(0,0,0,0.55);border:1px solid rgba(255,255,255,0.08);">
+
+                        <!-- Sliders -->
+                        <div class="space-y-4">
+                            <div class="flex items-center gap-3">
+                                <span class="text-[10px] font-mono w-7 text-right" style="color:var(--text-secondary)">HUE</span>
+                                <input type="range" id="input-hue" min="0" max="360" value="243">
+                            </div>
+                            <div class="grid grid-cols-2 gap-6">
+                                <div class="flex items-center gap-3">
+                                    <span class="text-[10px] font-mono w-7 text-right" style="color:var(--text-secondary)">SAT</span>
+                                    <input type="range" id="input-sat" min="0" max="100" value="75">
+                                </div>
+                                <div class="flex items-center gap-3">
+                                    <span class="text-[10px] font-mono w-7 text-right" style="color:var(--text-secondary)">LUM</span>
+                                    <input type="range" id="input-lum" min="0" max="100" value="59">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Bottom Row -->
+                        <div class="flex items-center justify-between pt-3 border-t" style="border-color:var(--border)">
+                            <div id="mini-shades" class="flex gap-1.5"></div>
+                            <div class="flex items-center gap-3">
+                                <!-- Harmony Buttons -->
+                                <div class="flex gap-1">
+                                    <button onclick="generateHarmony('complementary')" title="Complementary" class="px-2 py-1 rounded text-[10px] font-mono hover:bg-white/10 transition-colors" style="color:var(--text-secondary)">COMP</button>
+                                    <button onclick="generateHarmony('analogous')" title="Analogous" class="px-2 py-1 rounded text-[10px] font-mono hover:bg-white/10 transition-colors" style="color:var(--text-secondary)">ANA</button>
+                                    <button onclick="generateHarmony('triadic')" title="Triadic" class="px-2 py-1 rounded text-[10px] font-mono hover:bg-white/10 transition-colors" style="color:var(--text-secondary)">TRI</button>
+                                    <button onclick="generateHarmony('mono')" title="Monochromatic" class="px-2 py-1 rounded text-[10px] font-mono hover:bg-white/10 transition-colors" style="color:var(--text-secondary)">MONO</button>
+                                </div>
+                                <span id="palette-count" class="text-[10px] font-mono" style="color:var(--text-secondary)">0/14</span>
+                                <button onclick="addToPalette()" class="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg text-xs font-medium transition-colors">
+                                    <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                                    Add
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+
+            <!-- ===== GRID VIEW ===== -->
+            <main id="view-grid" class="flex-1 overflow-y-auto custom-scrollbar hidden-display flex flex-col">
+                <div class="max-w-6xl mx-auto w-full p-6 flex-1">
+
+                    <!-- Grid Controls + Image Extract -->
+                    <div class="mb-6 p-4 rounded-2xl border flex flex-wrap gap-6 items-center justify-between" style="background:var(--bg-card);border-color:var(--border);">
+                        <div class="flex flex-wrap gap-6 items-center">
+                            <div class="flex flex-col gap-1.5">
+                                <label class="text-[10px] font-mono uppercase tracking-wider" style="color:var(--text-secondary)">Gap</label>
+                                <input type="range" id="grid-gap" min="0" max="64" value="16" class="w-28 slider-sm">
+                            </div>
+                            <div class="flex flex-col gap-1.5">
+                                <label class="text-[10px] font-mono uppercase tracking-wider" style="color:var(--text-secondary)">Radius</label>
+                                <input type="range" id="grid-radius" min="0" max="100" value="8" class="w-28 slider-sm">
+                            </div>
+                            <div class="flex flex-col gap-1.5">
+                                <label class="text-[10px] font-mono uppercase tracking-wider" style="color:var(--text-secondary)">Cols</label>
+                                <div class="flex gap-1.5">
+                                    <button onclick="setGridCols(3)" class="col-btn w-7 h-7 rounded text-xs font-mono border transition-all" data-cols="3">3</button>
+                                    <button onclick="setGridCols(4)" class="col-btn w-7 h-7 rounded text-xs font-mono border transition-all" data-cols="4">4</button>
+                                    <button onclick="setGridCols(5)" class="col-btn w-7 h-7 rounded text-xs font-mono border transition-all" data-cols="5">5</button>
+                                    <button onclick="setGridCols(6)" class="col-btn w-7 h-7 rounded text-xs font-mono border transition-all" data-cols="6">6</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Image Extract Drop -->
+                        <label id="drop-zone" for="image-upload" class="flex items-center gap-2 px-4 py-2 rounded-xl border-2 border-dashed cursor-pointer transition-all hover:border-indigo-400" style="border-color:var(--border-strong);">
+                            <i data-lucide="image" class="w-4 h-4" style="color:var(--text-secondary)"></i>
+                            <span class="text-xs font-medium" style="color:var(--text-secondary)">Extract from image</span>
+                            <input id="image-upload" type="file" accept="image/*" class="hidden" onchange="onImageFileSelected(event)">
+                        </label>
+                    </div>
+
+                    <!-- Grid Container -->
+                    <div id="grid-container" class="transition-all duration-500" style="display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:16px; padding-bottom:32px;"></div>
+                </div>
+
+                <!-- Analysis Panel -->
+                <div class="w-full border-t p-5" style="background:rgba(15,15,15,0.95);border-color:rgba(255,255,255,0.07);">
+                    <div class="max-w-6xl mx-auto">
+                        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6">
+                            <div class="flex flex-col gap-0.5">
+                                <span class="text-[10px] font-mono uppercase tracking-wider" style="color:var(--text-secondary)">Avg Contrast</span>
+                                <span id="edu-contrast" class="text-lg font-bold">-</span>
+                                <span id="edu-contrast-note" class="text-[10px]" style="color:var(--text-secondary)">Pairwise score</span>
+                            </div>
+                            <div class="flex flex-col gap-0.5">
+                                <span class="text-[10px] font-mono uppercase tracking-wider" style="color:var(--text-secondary)">Completeness</span>
+                                <span id="edu-size" class="text-lg font-bold">-</span>
+                                <span id="edu-size-note" class="text-[10px]" style="color:var(--text-secondary)">Palette size</span>
+                            </div>
+                            <div class="flex flex-col gap-0.5">
+                                <span class="text-[10px] font-mono uppercase tracking-wider" style="color:var(--text-secondary)">Gradient</span>
+                                <span id="edu-gradient" class="text-lg font-bold">-</span>
+                                <span id="edu-gradient-note" class="text-[10px]" style="color:var(--text-secondary)">Hue spread</span>
+                            </div>
+                            <div class="flex flex-col gap-0.5">
+                                <span class="text-[10px] font-mono uppercase tracking-wider" style="color:var(--text-secondary)">Chroma</span>
+                                <span id="edu-chroma" class="text-lg font-bold">-</span>
+                                <span id="edu-chroma-note" class="text-[10px]" style="color:var(--text-secondary)">Expressiveness</span>
+                            </div>
+                            <div class="flex flex-col gap-0.5">
+                                <span class="text-[10px] font-mono uppercase tracking-wider" style="color:var(--text-secondary)">L/D Balance</span>
+                                <span id="edu-balance" class="text-lg font-bold">-</span>
+                                <span id="edu-balance-note" class="text-[10px]" style="color:var(--text-secondary)">Ratio</span>
+                            </div>
+                            <div class="flex flex-col gap-0.5">
+                                <span class="text-[10px] font-mono uppercase tracking-wider" style="color:var(--text-secondary)">Comp. Suggestion</span>
+                                <div class="flex items-center gap-2">
+                                    <div id="edu-comp-swatch" class="w-5 h-5 rounded-full border" style="border-color:var(--border-strong)"></div>
+                                    <span id="edu-comp-hex" class="text-xs font-mono" style="color:var(--text-secondary)">-</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+
+        <!-- RIGHT: Sidebar -->
+        <div id="app-sidebar" class="w-72 border-l flex flex-col shrink-0" style="border-color:rgba(255,255,255,0.08); background:rgba(0,0,0,0.55);">
+            <div class="p-4 border-b" style="border-color:var(--border);">
+                <h2 class="text-xs font-semibold uppercase tracking-wider flex items-center gap-1.5" style="color:var(--text-secondary)">
+                    <i data-lucide="palette" class="w-3 h-3"></i> Palette
+                </h2>
+            </div>
+            <div id="palette-list" class="flex-1 overflow-y-auto p-3 space-y-1 custom-scrollbar"></div>
+            <div class="p-3 border-t" style="border-color:var(--border);">
+                <h3 class="text-[10px] font-semibold uppercase tracking-wider mb-2" style="color:var(--text-secondary)">Generated Shades</h3>
+                <div id="shade-list" class="space-y-0.5"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== MODALS ===== -->
+
+    <!-- Export Modal -->
+    <div id="modal-export" class="modal-overlay hidden-display">
+        <div class="modal-box anim-in">
+            <div class="flex items-center justify-between mb-5">
+                <h2 class="font-bold text-lg" style="color:var(--text-primary)">Export Palette</h2>
+                <button onclick="closeModal('export')" style="color:var(--text-secondary)"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <button onclick="exportAs('png')" class="flex flex-col items-center gap-2 p-4 rounded-xl border transition-all hover:border-indigo-400" style="border-color:var(--border-strong);background:var(--bg-secondary);">
+                    <i data-lucide="image" class="w-6 h-6 text-indigo-400"></i>
+                    <span class="text-sm font-medium" style="color:var(--text-primary)">PNG</span>
+                    <span class="text-[10px]" style="color:var(--text-secondary)">Visual preview</span>
+                </button>
+                <button onclick="exportAs('svg')" class="flex flex-col items-center gap-2 p-4 rounded-xl border transition-all hover:border-indigo-400" style="border-color:var(--border-strong);background:var(--bg-secondary);">
+                    <i data-lucide="vector" class="w-6 h-6 text-pink-400"></i>
+                    <span class="text-sm font-medium" style="color:var(--text-primary)">SVG</span>
+                    <span class="text-[10px]" style="color:var(--text-secondary)">Scalable vector</span>
+                </button>
+                <button onclick="exportAs('css')" class="flex flex-col items-center gap-2 p-4 rounded-xl border transition-all hover:border-indigo-400" style="border-color:var(--border-strong);background:var(--bg-secondary);">
+                    <i data-lucide="code-2" class="w-6 h-6 text-blue-400"></i>
+                    <span class="text-sm font-medium" style="color:var(--text-primary)">CSS / SCSS</span>
+                    <span class="text-[10px]" style="color:var(--text-secondary)">CSS variables</span>
+                </button>
+                <button onclick="exportAs('json')" class="flex flex-col items-center gap-2 p-4 rounded-xl border transition-all hover:border-indigo-400" style="border-color:var(--border-strong);background:var(--bg-secondary);">
+                    <i data-lucide="braces" class="w-6 h-6 text-green-400"></i>
+                    <span class="text-sm font-medium" style="color:var(--text-primary)">JSON</span>
+                    <span class="text-[10px]" style="color:var(--text-secondary)">Data format</span>
+                </button>
+                <button onclick="exportAs('ase')" class="flex flex-col items-center gap-2 p-4 rounded-xl border transition-all hover:border-indigo-400 col-span-2" style="border-color:var(--border-strong);background:var(--bg-secondary);">
+                    <i data-lucide="layers" class="w-6 h-6 text-amber-400"></i>
+                    <span class="text-sm font-medium" style="color:var(--text-primary)">Adobe ASE</span>
+                    <span class="text-[10px]" style="color:var(--text-secondary)">Photoshop / Illustrator swatches</span>
+                </button>
+            </div>
+
+            <!-- CMYK Preview -->
+            <div class="mt-5 p-4 rounded-xl border" style="border-color:var(--border);background:var(--bg-secondary);">
+                <h3 class="text-xs font-semibold uppercase tracking-wider mb-3" style="color:var(--text-secondary)">CMYK Breakdown (current color)</h3>
+                <div id="cmyk-breakdown" class="grid grid-cols-4 gap-2"></div>
+                <div id="cmyk-error" class="mt-2 text-[10px]" style="color:var(--text-secondary)"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- History Modal -->
+    <div id="modal-history" class="modal-overlay hidden-display">
+        <div class="modal-box anim-in">
+            <div class="flex items-center justify-between mb-5">
+                <h2 class="font-bold text-lg" style="color:var(--text-primary)">Recent Colors</h2>
+                <div class="flex gap-2">
+                    <button onclick="clearHistory()" class="text-xs px-3 py-1.5 rounded-lg border transition-colors hover:border-red-400" style="border-color:var(--border);color:var(--text-secondary);">Clear</button>
+                    <button onclick="closeModal('history')" style="color:var(--text-secondary)"><i data-lucide="x" class="w-5 h-5"></i></button>
+                </div>
+            </div>
+            <div id="history-grid" class="grid grid-cols-5 gap-3"></div>
+        </div>
+    </div>
+
+    <!-- AI Suggest Modal -->
+    <div id="modal-ai" class="modal-overlay hidden-display">
+        <div class="modal-box anim-in">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="font-bold text-lg" style="color:var(--text-primary)">AI Color Suggestions</h2>
+                <button onclick="closeModal('ai')" style="color:var(--text-secondary)"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <p class="text-sm mb-4" style="color:var(--text-secondary)">Cohesive palette based on your current color</p>
+            <div id="ai-suggestions" class="space-y-2"></div>
+            <button onclick="applyAiSuggestions()" id="ai-apply-btn" class="w-full mt-4 py-2.5 bg-indigo-500 hover:bg-indigo-600 text-white rounded-xl font-medium text-sm transition-colors hidden">Add all to palette</button>
+        </div>
+    </div>
+
+    <!-- Hidden canvas for export -->
+    <canvas id="export-canvas" class="hidden"></canvas>
+
+    <script>
+    // ============================================================
+    // COLOR ENGINE
+    // ============================================================
+    const ColorEngine = {
+        hexToRgb: (hex) => {
+            const r = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+            return r ? { r: parseInt(r[1],16), g: parseInt(r[2],16), b: parseInt(r[3],16) } : {r:0,g:0,b:0};
+        },
+        rgbToHex: (r,g,b) => '#' + ((1<<24)+(r<<16)+(g<<8)+b).toString(16).slice(1).toUpperCase(),
+        rgbToHsl: (r,g,b) => {
+            r/=255;g/=255;b/=255;
+            const max=Math.max(r,g,b),min=Math.min(r,g,b);
+            let h,s,l=(max+min)/2;
+            if(max===min){h=s=0;}else{
+                const d=max-min;
+                s=l>0.5?d/(2-max-min):d/(max+min);
+                switch(max){case r:h=(g-b)/d+(g<b?6:0);break;case g:h=(b-r)/d+2;break;case b:h=(r-g)/d+4;break;}
+                h/=6;
+            }
+            return {h:h*360,s:s*100,l:l*100};
+        },
+        hslToRgb: (h,s,l) => {
+            let r,g,b;h/=360;s/=100;l/=100;
+            if(s===0){r=g=b=l;}else{
+                const hue2rgb=(p,q,t)=>{if(t<0)t+=1;if(t>1)t-=1;if(t<1/6)return p+(q-p)*6*t;if(t<1/2)return q;if(t<2/3)return p+(q-p)*(2/3-t)*6;return p;};
+                const q=l<0.5?l*(1+s):l+s-l*s;const p=2*l-q;
+                r=hue2rgb(p,q,h+1/3);g=hue2rgb(p,q,h);b=hue2rgb(p,q,h-1/3);
+            }
+            return {r:Math.round(r*255),g:Math.round(g*255),b:Math.round(b*255)};
+        },
+        getLuminance: (r,g,b) => {
+            const a=[r,g,b].map(v=>{v/=255;return v<=0.03928?v/12.92:Math.pow((v+0.055)/1.055,2.4);});
+            return a[0]*0.2126+a[1]*0.7152+a[2]*0.0722;
+        },
+        getContrastColor: (hex) => {
+            const {r,g,b}=ColorEngine.hexToRgb(hex);
+            return (r*299+g*587+b*114)/1000>=128?'#000000':'#FFFFFF';
+        },
+        generateScale: (hex) => {
+            const rgb=ColorEngine.hexToRgb(hex);
+            const hsl=ColorEngine.rgbToHsl(rgb.r,rgb.g,rgb.b);
+            return [98,94,86,74,60,48,38,28,18,10,4].map((l,i)=>{
+                let s=hsl.s;if(l>90||l<15)s=Math.max(0,s*0.8);
+                const nr=ColorEngine.hslToRgb(hsl.h,s,l);
+                return {id:`shade-${i}`,name:i===10?'950':(i===0?'50':i*100),hex:ColorEngine.rgbToHex(nr.r,nr.g,nr.b)};
+            });
+        },
+        rgbToCmyk: (r,g,b) => {
+            r/=255;g/=255;b/=255;
+            const k=1-Math.max(r,g,b);
+            if(k===1) return {c:0,m:0,y:0,k:100};
+            const c=(1-r-k)/(1-k);
+            const m=(1-g-k)/(1-k);
+            const y=(1-b-k)/(1-k);
+            return {c:Math.round(c*100),m:Math.round(m*100),y:Math.round(y*100),k:Math.round(k*100)};
+        },
+        // Returns CMYK simulation hex
+        cmykPreview: (c,m,y,k) => {
+            const r=Math.round(255*(1-c/100)*(1-k/100));
+            const g=Math.round(255*(1-m/100)*(1-k/100));
+            const b=Math.round(255*(1-y/100)*(1-k/100));
+            return ColorEngine.rgbToHex(r,g,b);
+        }
+    };
+
+    // ============================================================
+    // PALETTE ANALYSIS
+    // ============================================================
+    const PaletteAnalysis = {
+        analyze: (palette) => {
+            if(!palette||palette.length===0) return PaletteAnalysis.empty();
+            return {
+                avgContrast: PaletteAnalysis.contrast(palette),
+                complementary: PaletteAnalysis.complementary(palette[0]),
+                gradientQuality: PaletteAnalysis.gradient(palette),
+                chromaRange: PaletteAnalysis.chroma(palette),
+                balance: PaletteAnalysis.balance(palette),
+                completeness: PaletteAnalysis.size(palette)
+            };
+        },
+        empty: () => ({
+            avgContrast:{value:'-',note:'Add colors',color:'#71717a'},
+            complementary:{hex:'transparent'},
+            gradientQuality:{value:'-',note:'-',color:'#71717a'},
+            chromaRange:{value:'-',note:'-',color:'#71717a'},
+            balance:{value:'-',note:'-',color:'#71717a'},
+            completeness:{value:'-',note:'Add colors',color:'#71717a'}
+        }),
+        contrast: (p) => {
+            if(p.length<2) return {value:'-',note:'Need 2+ colors',color:'#71717a'};
+            let total=0,count=0;
+            for(let i=0;i<p.length;i++) for(let j=i+1;j<p.length;j++){
+                const {r:r1,g:g1,b:b1}=ColorEngine.hexToRgb(p[i].hex);
+                const {r:r2,g:g2,b:b2}=ColorEngine.hexToRgb(p[j].hex);
+                const l1=ColorEngine.getLuminance(r1,g1,b1)+0.05;
+                const l2=ColorEngine.getLuminance(r2,g2,b2)+0.05;
+                total+=Math.max(l1,l2)/Math.min(l1,l2);count++;
+            }
+            const avg=total/count;
+            return {value:avg.toFixed(2),note:avg<3?'Low visibility':avg>=4.5?'WCAG AA OK':'Moderate',color:avg<3?'#f87171':avg>=4.5?'#4ade80':'#fbbf24'};
+        },
+        complementary: (c) => {
+            if(!c) return {hex:'transparent'};
+            const {r,g,b}=ColorEngine.hexToRgb(c.hex);
+            const hsl=ColorEngine.rgbToHsl(r,g,b);
+            const nr=ColorEngine.hslToRgb((hsl.h+180)%360,hsl.s,hsl.l);
+            return {hex:ColorEngine.rgbToHex(nr.r,nr.g,nr.b)};
+        },
+        gradient: (p) => {
+            if(p.length<2) return {value:'N/A',note:'-',color:'#71717a'};
+            const hues=p.map(c=>{const {r,g,b}=ColorEngine.hexToRgb(c.hex);return ColorEngine.rgbToHsl(r,g,b).h;});
+            const spread=Math.max(...hues)-Math.min(...hues);
+            const avgSat=p.reduce((sum,c)=>{const {r,g,b}=ColorEngine.hexToRgb(c.hex);return sum+ColorEngine.rgbToHsl(r,g,b).s;},0)/p.length;
+            if(avgSat<20) return {value:'Neutral',note:'Greyscale/Utility',color:'#a1a1aa'};
+            if(spread>180) return {value:'Risky',note:'May produce mud',color:'#f87171'};
+            return {value:'Smooth',note:'Good coherence',color:'#4ade80'};
+        },
+        chroma: (p) => {
+            const cs=p.map(c=>{const {r,g,b}=ColorEngine.hexToRgb(c.hex);const h=ColorEngine.rgbToHsl(r,g,b);return (h.s/100*(1-Math.abs(2*h.l/100-1)))*100;});
+            const maxC=Math.max(...cs);
+            return {value:`${Math.min(...cs).toFixed(0)}–${maxC.toFixed(0)}`,note:maxC>80?'High expressiveness':maxC>40?'UI safe balanced':'Subtle/Muted',color:maxC>80?'#fbbf24':maxC>40?'#4ade80':'#a1a1aa'};
+        },
+        balance: (p) => {
+            let l=0,d=0;
+            p.forEach(c=>{const {r,g,b}=ColorEngine.hexToRgb(c.hex);ColorEngine.getLuminance(r,g,b)>0.5?l++:d++;});
+            return {value:`${l}:${d}`,note:'Light:Dark ratio',color:'#e4e4e7'};
+        },
+        size: (p) => {
+            const n=p.length;
+            if(n<3) return {value:'Sparse',note:'Add more for UI',color:'#fbbf24'};
+            if(n>8) return {value:'Heavy',note:'Cognitive overload?',color:'#f87171'};
+            return {value:'Optimal',note:'5-8 recommended',color:'#4ade80'};
+        }
+    };
+
+    // ============================================================
+    // STATE
+    // ============================================================
+    let state = {
+        activeColor: '#4F46E5',
+        palette: [
+            {id:'1',hex:'#4F46E5',name:'Indigo'},
+            {id:'2',hex:'#EC4899',name:'Super Pink'},
+            {id:'3',hex:'#10B981',name:'Emerald'}
+        ],
+        viewMode: 'picker',
+        gridGap: 16,
+        gridRadius: 8,
+        gridColumns: 4,
+        history: JSON.parse(localStorage.getItem('huesat-history')||'[]'),
+        aiSuggestions: []
+    };
+
+    // ============================================================
+    // COLOR NAMES
+    // ============================================================
+    const embeddedNames = [
+        {name:'Black',hex:'#000000'},{name:'White',hex:'#FFFFFF'},{name:'Red',hex:'#FF0000'},
+        {name:'Green',hex:'#008000'},{name:'Blue',hex:'#0000FF'},{name:'Yellow',hex:'#FFFF00'},
+        {name:'Cyan',hex:'#00FFFF'},{name:'Magenta',hex:'#FF00FF'},{name:'Silver',hex:'#C0C0C0'},
+        {name:'Gray',hex:'#808080'},{name:'Maroon',hex:'#800000'},{name:'Olive',hex:'#808000'},
+        {name:'Purple',hex:'#800080'},{name:'Teal',hex:'#008080'},{name:'Navy',hex:'#000080'},
+        {name:'Indigo',hex:'#4B0082'},{name:'Orange',hex:'#FFA500'},{name:'Pink',hex:'#FFC0CB'},
+        {name:'Crimson',hex:'#DC143C'},{name:'Gold',hex:'#FFD700'},{name:'Turquoise',hex:'#40E0D0'},
+        {name:'Indigo',hex:'#4F46E5'},{name:'Slate',hex:'#64748B'},{name:'Emerald',hex:'#10B981'},
+        {name:'Sky',hex:'#0EA5E9'},{name:'Rose',hex:'#F43F5E'},{name:'Amber',hex:'#F59E0B'},
+        {name:'Violet',hex:'#8B5CF6'},{name:'Coral',hex:'#FF6B6B'},{name:'Mint',hex:'#3EB489'},
+        {name:'Lavender',hex:'#E6E6FA'},{name:'Salmon',hex:'#FA8072'},{name:'Peach',hex:'#FFCBA4'}
+    ];
+    let globalNames = embeddedNames.map(c=>({...c,rgb:ColorEngine.hexToRgb(c.hex)}));
+
+    function hexToRgbSimple(hex){
+        const r=/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        return r?{r:parseInt(r[1],16),g:parseInt(r[2],16),b:parseInt(r[3],16)}:{r:0,g:0,b:0};
+    }
+
+    fetch('https://raw.githubusercontent.com/meodai/color-names/main/src/colornames.csv')
+        .then(r=>r.text()).then(data=>{
+            const lines=data.split('\n');
+            const nc=[];
+            for(let i=1;i<lines.length;i++){
+                const l=lines[i].split(',');
+                if(l.length>=2){const hex=l[1].startsWith('#')?l[1]:'#'+l[1];nc.push({name:l[0],hex,rgb:hexToRgbSimple(hex)});}
+            }
+            if(nc.length>0){globalNames=nc;updateUI();}
+        }).catch(()=>{});
+
+    function findNearestColorName(rgb){
+        let min=Infinity,nearest=globalNames[0];
+        for(const c of globalNames){
+            const d=Math.pow(rgb.r-c.rgb.r,2)+Math.pow(rgb.g-c.rgb.g,2)+Math.pow(rgb.b-c.rgb.b,2);
+            if(d<min){min=d;nearest=c;}
+        }
+        return nearest.name;
+    }
+
+    // ============================================================
+    // DOM ELEMENTS
+    // ============================================================
+    const els = {
+        bg: document.getElementById('app-background'),
+        mainDisplay: document.getElementById('main-color-display'),
+        nameDisplay: document.getElementById('color-name-display'),
+        infoContainer: document.getElementById('info-container'),
+        rgbDisplay: document.getElementById('rgb-display'),
+        hslDisplay: document.getElementById('hsl-display'),
+        cmykDisplay: document.getElementById('cmyk-display'),
+        viewPicker: document.getElementById('view-picker'),
+        viewGrid: document.getElementById('view-grid'),
+        btnViewPicker: document.getElementById('btn-view-picker'),
+        btnViewGrid: document.getElementById('btn-view-grid'),
+        inputHue: document.getElementById('input-hue'),
+        inputSat: document.getElementById('input-sat'),
+        inputLum: document.getElementById('input-lum'),
+        paletteList: document.getElementById('palette-list'),
+        paletteCount: document.getElementById('palette-count'),
+        shadeList: document.getElementById('shade-list'),
+        miniShades: document.getElementById('mini-shades'),
+        gridContainer: document.getElementById('grid-container'),
+        toast: document.getElementById('toast'),
+        toastMsg: document.getElementById('toast-message'),
+        canvas: document.getElementById('export-canvas'),
+        gridGap: document.getElementById('grid-gap'),
+        gridRadius: document.getElementById('grid-radius'),
+        historyBar: document.getElementById('history-bar'),
+        eduContrast: document.getElementById('edu-contrast'),
+        eduContrastNote: document.getElementById('edu-contrast-note'),
+        eduSize: document.getElementById('edu-size'),
+        eduSizeNote: document.getElementById('edu-size-note'),
+        eduGradient: document.getElementById('edu-gradient'),
+        eduGradientNote: document.getElementById('edu-gradient-note'),
+        eduChroma: document.getElementById('edu-chroma'),
+        eduChromaNote: document.getElementById('edu-chroma-note'),
+        eduBalance: document.getElementById('edu-balance'),
+        eduBalanceNote: document.getElementById('edu-balance-note'),
+        eduCompSwatch: document.getElementById('edu-comp-swatch'),
+        eduCompHex: document.getElementById('edu-comp-hex')
+    };
+
+    // ============================================================
+    // THEME
+    // ============================================================
+
+    // ============================================================
+    // UI UPDATE
+    // ============================================================
+    function updateUI(){
+        const hex=state.activeColor;
+        const rgb=ColorEngine.hexToRgb(hex);
+        const hsl=ColorEngine.rgbToHsl(rgb.r,rgb.g,rgb.b);
+        const cmyk=ColorEngine.rgbToCmyk(rgb.r,rgb.g,rgb.b);
+        const contrast=ColorEngine.getContrastColor(hex);
+
+        // Determine UI chrome colors based on active color lightness
+        // We compute solid dark/light backgrounds so nothing bleeds through
+        const isLight = hsl.l > 75;
+
+        const gradOverlay = document.getElementById('bg-gradient-overlay');
+        const texOverlay  = document.getElementById('bg-texture-overlay');
+        const header      = document.getElementById('app-header');
+        const dock        = document.getElementById('picker-dock');
+        const sidebar     = document.getElementById('app-sidebar');
+
+        if(state.viewMode==='picker'){
+            // Set background to exact active color — nothing else
+            els.bg.style.backgroundColor = hex;
+            document.body.style.backgroundColor = hex;  // prevent any body bleed-through
+
+            // All tinting overlays off for light colors
+            if(gradOverlay) gradOverlay.style.opacity = isLight ? '0' : '1';
+            if(texOverlay)  texOverlay.style.opacity  = isLight ? '0' : '0.03';
+
+            // Chrome: dark chrome on light colors, dark-transparent chrome on dark colors
+            if(isLight){
+                const chrome = 'rgba(18,18,18,0.92)';
+                const chromeBorder = 'rgba(0,0,0,0.15)';
+                if(header)  { header.style.background  = chrome; header.style.borderColor  = chromeBorder; }
+                if(dock)    { dock.style.background     = chrome; dock.style.borderColor    = chromeBorder; }
+                if(sidebar) { sidebar.style.background  = chrome; sidebar.style.borderColor = chromeBorder; }
+            } else {
+                const chrome = 'rgba(0,0,0,0.55)';
+                const chromeBorder = 'rgba(255,255,255,0.08)';
+                if(header)  { header.style.background  = chrome; header.style.borderColor  = chromeBorder; }
+                if(dock)    { dock.style.background     = chrome; dock.style.borderColor    = chromeBorder; }
+                if(sidebar) { sidebar.style.background  = chrome; sidebar.style.borderColor = chromeBorder; }
+            }
+        } else {
+            els.bg.style.backgroundColor = '#09090b';
+            document.body.style.backgroundColor = '#09090b';
+            if(gradOverlay) gradOverlay.style.opacity = '0';
+            if(texOverlay)  texOverlay.style.opacity  = '0';
+            // Reset chrome to dark defaults for grid view
+            const chrome = 'rgba(0,0,0,0.55)';
+            const chromeBorder = 'rgba(255,255,255,0.08)';
+            if(header)  { header.style.background  = chrome; header.style.borderColor  = chromeBorder; }
+            if(sidebar) { sidebar.style.background  = chrome; sidebar.style.borderColor = chromeBorder; }
+        }
+
+        els.mainDisplay.style.color=contrast;
+        if(document.activeElement!==els.mainDisplay) els.mainDisplay.innerText=hex.toUpperCase();
+
+        const name=findNearestColorName(rgb);
+        els.nameDisplay.innerText=name;
+        els.nameDisplay.style.color=contrast==='#FFFFFF'?'rgba(255,255,255,0.8)':'rgba(0,0,0,0.7)';
+
+        const infoColor=contrast==='#FFFFFF'?'rgba(255,255,255,0.6)':'rgba(0,0,0,0.5)';
+        els.infoContainer.style.color=infoColor;
+        els.rgbDisplay.innerText=`rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`;
+        els.hslDisplay.innerText=`hsl(${Math.round(hsl.h)}°, ${Math.round(hsl.s)}%, ${Math.round(hsl.l)}%)`;
+        els.cmykDisplay.innerText=`cmyk(${cmyk.c}%, ${cmyk.m}%, ${cmyk.y}%, ${cmyk.k}%)`;
+
+        if(document.activeElement!==els.inputHue) els.inputHue.value=hsl.h;
+        if(document.activeElement!==els.inputSat) els.inputSat.value=hsl.s;
+        if(document.activeElement!==els.inputLum) els.inputLum.value=hsl.l;
+
+        updateSliderGradients(hsl.h,hsl.s,hsl.l);
+        renderShades(hex);
+        renderPalette();
+        renderGrid();
+        renderEduPanel();
+        renderHistoryBar();
+    }
+
+    function updateSliderGradients(h,s,l){
+        els.inputHue.style.background='linear-gradient(to right,#ff0000 0%,#ffff00 17%,#00ff00 33%,#00ffff 50%,#0000ff 67%,#ff00ff 83%,#ff0000 100%)';
+        els.inputSat.style.background=`linear-gradient(to right,hsl(${h},0%,${l}%),hsl(${h},100%,${l}%))`;
+        els.inputLum.style.background=`linear-gradient(to right,black 0%,hsl(${h},${s}%,50%) 50%,white 100%)`;
+    }
+
+    function renderShades(hex){
+        const shades=ColorEngine.generateScale(hex);
+        els.shadeList.innerHTML=shades.map(s=>{
+            const cc=ColorEngine.getContrastColor(s.hex);
+            return `<div class="flex items-center gap-1.5 group cursor-pointer" onclick="setActiveColor('${s.hex}')">
+                <div class="text-[9px] w-6 text-right font-mono transition-colors" style="color:var(--text-secondary)">${s.name}</div>
+                <div class="flex-1 h-6 rounded flex items-center justify-end px-2 hover:scale-x-105 origin-left transition-transform" style="background:${s.hex}">
+                    <span class="text-[9px] font-mono opacity-0 group-hover:opacity-100 transition-opacity" style="color:${cc}">${s.hex}</span>
+                </div>
+            </div>`;
+        }).join('');
+
+        els.miniShades.innerHTML=shades.slice(1,9).map(s=>`
+            <button onclick="setActiveColor('${s.hex}')" class="w-5 h-5 rounded-full border border-white/10 hover:scale-125 transition-transform flex-shrink-0" style="background:${s.hex}" title="${s.hex}"></button>
+        `).join('');
+    }
+
+    function renderPalette(){
+        els.paletteCount.innerText=`${state.palette.length}/14`;
+        els.paletteList.innerHTML=state.palette.map(c=>`
+            <div class="group flex items-center gap-2 p-2 rounded-xl hover:bg-white/5 transition-colors cursor-pointer border border-transparent hover:border-white/5" onclick="setActiveColor('${c.hex}')">
+                <div class="w-8 h-8 rounded-lg shadow-inner ring-1 ring-white/10 flex-shrink-0" style="background:${c.hex}"></div>
+                <div class="flex-1 min-w-0">
+                    <div class="text-xs font-medium truncate" style="color:var(--text-primary)">${c.name}</div>
+                    <div class="text-[10px] font-mono truncate" style="color:${c.hex};opacity:0.9">${c.hex}</div>
+                </div>
+                <button onclick="event.stopPropagation();copyToClipboard('${c.hex}')" style="color:var(--text-secondary)" class="p-1.5 opacity-0 group-hover:opacity-100 transition-opacity hover:text-white">
+                    <i data-lucide="copy" class="w-3 h-3"></i>
+                </button>
+                <button onclick="event.stopPropagation();removeFromPalette('${c.id}')" style="color:var(--text-secondary)" class="p-1.5 opacity-0 group-hover:opacity-100 transition-opacity hover:text-red-400">
+                    <i data-lucide="trash-2" class="w-3 h-3"></i>
+                </button>
+            </div>
+        `).join('');
+        lucide.createIcons();
+    }
+
+    function renderGrid(){
+        const cols=state.gridColumns;
+        els.gridContainer.style.gridTemplateColumns=`repeat(${cols},minmax(0,1fr))`;
+        els.gridContainer.style.gap=`${state.gridGap}px`;
+        const cards=state.palette.map(c=>`
+            <div class="group relative aspect-[4/3] transition-all duration-300 hover:shadow-2xl hover:z-10 hover:scale-[1.02]"
+                 style="background:${c.hex};border-radius:${state.gridRadius}px;color:${ColorEngine.getContrastColor(c.hex)}">
+                <div class="absolute inset-0 flex flex-col justify-end p-4 opacity-0 group-hover:opacity-100 transition-opacity" style="border-radius:${state.gridRadius}px">
+                    <p class="font-bold text-base tracking-tight">${c.name}</p>
+                    <p class="font-mono text-xs opacity-80">${c.hex}</p>
+                </div>
+                <button onclick="event.stopPropagation();removeFromPalette('${c.id}')" class="absolute top-2 right-2 p-1.5 bg-black/20 hover:bg-red-500/80 rounded-full text-white opacity-0 group-hover:opacity-100 transition-all"><i data-lucide="x" class="w-3 h-3"></i></button>
+            </div>
+        `).join('');
+        const addBtn=`<button onclick="switchView('picker')" class="aspect-[4/3] border-2 border-dashed flex flex-col items-center justify-center transition-all group hover:scale-[1.02]" style="border-color:var(--border-strong);border-radius:${state.gridRadius}px">
+            <div style="color:${state.activeColor};opacity:0.8" class="group-hover:scale-110 transition-transform"><i data-lucide="plus" class="w-5 h-5 mb-1"></i></div>
+            <span class="text-xs font-medium" style="color:var(--text-secondary)">Add Color</span>
+        </button>`;
+        els.gridContainer.innerHTML=cards+addBtn;
+        lucide.createIcons();
+    }
+
+    function renderEduPanel(){
+        const a=PaletteAnalysis.analyze(state.palette);
+        els.eduContrast.innerText=a.avgContrast.value; els.eduContrast.style.color=a.avgContrast.color; els.eduContrastNote.innerText=a.avgContrast.note;
+        els.eduSize.innerText=a.completeness.value; els.eduSize.style.color=a.completeness.color; els.eduSizeNote.innerText=a.completeness.note;
+        els.eduGradient.innerText=a.gradientQuality.value; els.eduGradient.style.color=a.gradientQuality.color; els.eduGradientNote.innerText=a.gradientQuality.note;
+        els.eduChroma.innerText=a.chromaRange.value; els.eduChroma.style.color=a.chromaRange.color; els.eduChromaNote.innerText=a.chromaRange.note;
+        els.eduBalance.innerText=a.balance.value; els.eduBalance.style.color=a.balance.color; els.eduBalanceNote.innerText=a.balance.note;
+        els.eduCompSwatch.style.backgroundColor=a.complementary.hex;
+        els.eduCompHex.innerText=a.complementary.hex==='transparent'?'-':a.complementary.hex;
+    }
+
+    function renderHistoryBar(){
+        const recent=state.history.slice(0,10);
+        els.historyBar.innerHTML=recent.map(hex=>`
+            <div class="history-item" style="background:${hex};border-color:${ColorEngine.getContrastColor(hex)}33" title="${hex}" onclick="setActiveColor('${hex}')"></div>
+        `).join('');
+    }
+
+    // ============================================================
+    // ACTIONS
+    // ============================================================
+    function setActiveColor(hex){
+        if(!/^#[0-9A-Fa-f]{6}$/.test(hex)) return;
+        state.activeColor=hex.toUpperCase();
+        addToHistory(hex);
+        updateUI();
+    }
+
+    function addToHistory(hex){
+        hex=hex.toUpperCase();
+        state.history=state.history.filter(h=>h!==hex);
+        state.history.unshift(hex);
+        if(state.history.length>20) state.history=state.history.slice(0,20);
+        localStorage.setItem('huesat-history',JSON.stringify(state.history));
+    }
+
+    function clearHistory(){
+        state.history=[];
+        localStorage.removeItem('huesat-history');
+        renderHistoryBar();
+        document.getElementById('history-grid').innerHTML='<p class="text-sm col-span-5 text-center py-4" style="color:var(--text-secondary)">No history yet</p>';
+        showToast('History cleared');
+    }
+
+    function addToPalette(){
+        if(state.palette.some(c=>c.hex===state.activeColor)){showToast('Already in palette');return;}
+        if(state.palette.length>=14){showToast('Max 14 colors');return;}
+        const name=findNearestColorName(ColorEngine.hexToRgb(state.activeColor));
+        state.palette.push({id:Date.now().toString(),hex:state.activeColor,name});
+        showToast('Added to palette');
+        updateUI();
+    }
+
+    function removeFromPalette(id){
+        state.palette=state.palette.filter(c=>c.id!==id);
+        updateUI();
+    }
+
+    function updateFromSliders(source){
+        let h=parseInt(els.inputHue.value),s=parseInt(els.inputSat.value),l=parseInt(els.inputLum.value);
+        if(source==='hue'){if(s<10){s=70;els.inputSat.value=s;}if(l<10||l>90){l=50;els.inputLum.value=l;}}
+        const rgb=ColorEngine.hslToRgb(h,s,l);
+        setActiveColor(ColorEngine.rgbToHex(rgb.r,rgb.g,rgb.b));
+    }
+
+    function switchView(mode){
+        state.viewMode=mode;
+        if(mode==='picker'){
+            els.viewPicker.classList.remove('hidden-display');
+            els.viewGrid.classList.add('hidden-display');
+            els.viewGrid.classList.remove('flex');
+            els.btnViewPicker.classList.add('bg-white/10','text-white','shadow-sm');
+            els.btnViewPicker.classList.remove('text-zinc-400');
+            els.btnViewGrid.classList.remove('bg-white/10','text-white','shadow-sm');
+            els.btnViewGrid.classList.add('text-zinc-400');
+        } else {
+            els.viewPicker.classList.add('hidden-display');
+            els.viewGrid.classList.remove('hidden-display');
+            els.viewGrid.classList.add('flex');
+            els.btnViewGrid.classList.add('bg-white/10','text-white','shadow-sm');
+            els.btnViewGrid.classList.remove('text-zinc-400');
+            els.btnViewPicker.classList.remove('bg-white/10','text-white','shadow-sm');
+            els.btnViewPicker.classList.add('text-zinc-400');
+        }
+        updateUI();
+    }
+
+    function setGridCols(n){
+        state.gridColumns=n;
+        document.querySelectorAll('.col-btn').forEach(btn=>{
+            const active=parseInt(btn.dataset.cols)===n;
+            btn.style.background=active?'var(--text-primary)':'transparent';
+            btn.style.color=active?'var(--bg-primary)':'var(--text-secondary)';
+            btn.style.borderColor=active?'transparent':'var(--border-strong)';
+        });
+        renderGrid();
+    }
+
+    // ============================================================
+    // HEX EDITABLE
+    // ============================================================
+    els.mainDisplay.addEventListener('keydown',(e)=>{
+        if(e.key==='Enter'){
+            e.preventDefault();
+            const raw=els.mainDisplay.innerText.trim().replace(/\s/g,'');
+            const hex=raw.startsWith('#')?raw:'#'+raw;
+            if(/^#[0-9A-Fa-f]{6}$/.test(hex)) setActiveColor(hex);
+            else{showToast('Invalid hex color');els.mainDisplay.innerText=state.activeColor;}
+            els.mainDisplay.blur();
+        }
+        if(e.key==='Escape'){
+            els.mainDisplay.innerText=state.activeColor;
+            els.mainDisplay.blur();
+        }
+    });
+    els.mainDisplay.addEventListener('blur',()=>{
+        const raw=els.mainDisplay.innerText.trim().replace(/\s/g,'');
+        const hex=raw.startsWith('#')?raw:'#'+raw;
+        if(/^#[0-9A-Fa-f]{6}$/.test(hex)) setActiveColor(hex);
+        else els.mainDisplay.innerText=state.activeColor;
+    });
+    els.mainDisplay.addEventListener('click',()=>{
+        if(window.getSelection().toString()===''||window.getSelection().toString()===els.mainDisplay.innerText){
+            copyToClipboard(state.activeColor);
+        }
+    });
+
+    // ============================================================
+    // HARMONY GENERATION
+    // ============================================================
+    function generateHarmony(type){
+        const {r,g,b}=ColorEngine.hexToRgb(state.activeColor);
+        const {h,s,l}=ColorEngine.rgbToHsl(r,g,b);
+        let colors=[];
+        switch(type){
+            case 'complementary':
+                colors=[state.activeColor,hslHex((h+180)%360,s,l)];
+                break;
+            case 'analogous':
+                colors=[hslHex((h-30+360)%360,s,l),state.activeColor,hslHex((h+30)%360,s,l)];
+                break;
+            case 'triadic':
+                colors=[state.activeColor,hslHex((h+120)%360,s,l),hslHex((h+240)%360,s,l)];
+                break;
+            case 'mono':
+                colors=[hslHex(h,s,Math.max(20,l-30)),hslHex(h,s,Math.max(30,l-15)),state.activeColor,hslHex(h,s,Math.min(80,l+15)),hslHex(h,s,Math.min(90,l+30))];
+                break;
+        }
+        let added=0;
+        colors.forEach(hex=>{
+            if(!state.palette.some(c=>c.hex===hex)&&state.palette.length<14){
+                const name=findNearestColorName(ColorEngine.hexToRgb(hex));
+                state.palette.push({id:Date.now().toString()+Math.random(),hex,name});
+                added++;
+            }
+        });
+        showToast(added>0?`Added ${added} ${type} colors`:'Colors already in palette');
+        updateUI();
+    }
+
+    function hslHex(h,s,l){
+        const {r,g,b}=ColorEngine.hslToRgb(h,s,l);
+        return ColorEngine.rgbToHex(r,g,b);
+    }
+
+    // ============================================================
+    // AI SUGGESTIONS
+    // ============================================================
+    function openAiSuggest(){
+        const {r,g,b}=ColorEngine.hexToRgb(state.activeColor);
+        const {h,s,l}=ColorEngine.rgbToHsl(r,g,b);
+        // Generate aesthetically cohesive set
+        const suggestions=[
+            {hex:state.activeColor,label:'Base'},
+            {hex:hslHex((h+30)%360,s*0.9,l),label:'Warm analog'},
+            {hex:hslHex((h-30+360)%360,s*0.9,l),label:'Cool analog'},
+            {hex:hslHex((h+180)%360,s,l),label:'Complement'},
+            {hex:hslHex(h,s*0.5,Math.min(l+20,90)),label:'Tint'},
+            {hex:hslHex(h,s,Math.max(l-25,10)),label:'Shade'},
+            {hex:hslHex((h+60)%360,s*0.7,l*0.9),label:'Split comp.'}
+        ];
+        state.aiSuggestions=suggestions;
+
+        const container=document.getElementById('ai-suggestions');
+        container.innerHTML=suggestions.map((s,i)=>`
+            <div class="flex items-center gap-3 p-2 rounded-xl hover:bg-white/5 cursor-pointer transition-colors" onclick="setActiveColor('${s.hex}')">
+                <div class="w-10 h-10 rounded-lg flex-shrink-0" style="background:${s.hex}"></div>
+                <div class="flex-1">
+                    <div class="text-xs font-medium" style="color:var(--text-primary)">${s.label}</div>
+                    <div class="text-[10px] font-mono" style="color:var(--text-secondary)">${s.hex} · ${findNearestColorName(ColorEngine.hexToRgb(s.hex))}</div>
+                </div>
+                <button onclick="event.stopPropagation();addSingleAi('${s.hex}')" class="text-[10px] px-2 py-1 rounded border transition-colors hover:border-indigo-400" style="border-color:var(--border-strong);color:var(--text-secondary)">+ Add</button>
+            </div>
+        `).join('');
+
+        document.getElementById('ai-apply-btn').classList.remove('hidden');
+        openModal('ai');
+    }
+
+    function addSingleAi(hex){
+        if(!state.palette.some(c=>c.hex===hex)&&state.palette.length<14){
+            const name=findNearestColorName(ColorEngine.hexToRgb(hex));
+            state.palette.push({id:Date.now().toString(),hex,name});
+            showToast(`${hex} added`);
+            updateUI();
+        } else {
+            showToast('Already in palette');
+        }
+    }
+
+    function applyAiSuggestions(){
+        let added=0;
+        state.aiSuggestions.forEach(s=>{
+            if(!state.palette.some(c=>c.hex===s.hex)&&state.palette.length<14){
+                const name=findNearestColorName(ColorEngine.hexToRgb(s.hex));
+                state.palette.push({id:Date.now().toString()+Math.random(),hex:s.hex,name});
+                added++;
+            }
+        });
+        showToast(`Added ${added} colors`);
+        closeModal('ai');
+        updateUI();
+    }
+
+    // ============================================================
+    // IMAGE PICKING — TWO MODES
+    // ============================================================
+
+    // File input handler — show mode chooser
+    function onImageFileSelected(event){
+        const file=event.target.files[0];
+        event.target.value='';
+        if(!file||!file.type.startsWith('image/')) return;
+        openImageModeChooser(file);
+    }
+
+    function openImageModeChooser(file){
+        const existing=document.getElementById('img-mode-overlay');
+        if(existing) existing.remove();
+
+        const overlay=document.createElement('div');
+        overlay.id='img-mode-overlay';
+        overlay.className='modal-overlay';
+        overlay.style.zIndex='600';
+        overlay.innerHTML=`
+            <div class="modal-box anim-in" style="max-width:380px;">
+                <h2 class="font-bold text-lg mb-1" style="color:var(--text-primary)">Image Color Mode</h2>
+                <p class="text-sm mb-5" style="color:var(--text-secondary)">How do you want to pick colors from this image?</p>
+                <div class="flex flex-col gap-3">
+                    <button id="img-mode-auto" class="flex items-center gap-4 p-4 rounded-xl border-2 transition-all hover:border-indigo-400 text-left group" style="border-color:var(--border-strong);background:var(--bg-secondary);">
+                        <div class="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style="background:rgba(99,102,241,0.15)">
+                            <i data-lucide="cpu" class="w-5 h-5 text-indigo-400"></i>
+                        </div>
+                        <div>
+                            <div class="text-sm font-semibold" style="color:var(--text-primary)">Auto Extract</div>
+                            <div class="text-xs mt-0.5" style="color:var(--text-secondary)">Automatically find dominant colors and save them all to your palette</div>
+                        </div>
+                    </button>
+                    <button id="img-mode-manual" class="flex items-center gap-4 p-4 rounded-xl border-2 transition-all hover:border-pink-400 text-left group" style="border-color:var(--border-strong);background:var(--bg-secondary);">
+                        <div class="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style="background:rgba(236,72,153,0.15)">
+                            <i data-lucide="pipette" class="w-5 h-5 text-pink-400"></i>
+                        </div>
+                        <div>
+                            <div class="text-sm font-semibold" style="color:var(--text-primary)">Manual Pick</div>
+                            <div class="text-xs mt-0.5" style="color:var(--text-secondary)">Image appears in the app. Hover to preview colors, click to pick one. Image disappears automatically after picking.</div>
+                        </div>
+                    </button>
+                </div>
+                <button id="img-mode-cancel" class="w-full mt-4 py-2.5 text-sm rounded-xl border transition-colors" style="border-color:var(--border);color:var(--text-secondary);">Cancel</button>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+        lucide.createIcons();
+
+        const imgEl=new Image();
+        imgEl.onload=()=>{
+            document.getElementById('img-mode-auto').onclick=()=>{overlay.remove();runAutoExtract(imgEl);};
+            document.getElementById('img-mode-manual').onclick=()=>{overlay.remove();launchManualImagePicker(imgEl);};
+        };
+        document.getElementById('img-mode-cancel').onclick=()=>overlay.remove();
+        overlay.addEventListener('click',(e)=>{if(e.target===overlay)overlay.remove();});
+        imgEl.src=URL.createObjectURL(file);
+    }
+
+    // ---- MODE 1: Auto extract dominant colors ----
+    function runAutoExtract(imgEl){
+        showToast('Extracting colors…');
+        const canvas=document.createElement('canvas');
+        // Use higher res for better color accuracy
+        const MAX=200;
+        const scale=Math.min(MAX/imgEl.naturalWidth, MAX/imgEl.naturalHeight, 1);
+        canvas.width=Math.max(1, Math.floor(imgEl.naturalWidth*scale));
+        canvas.height=Math.max(1, Math.floor(imgEl.naturalHeight*scale));
+        const ctx=canvas.getContext('2d');
+        ctx.drawImage(imgEl,0,0,canvas.width,canvas.height);
+        const data=ctx.getImageData(0,0,canvas.width,canvas.height).data;
+
+        // Quantize pixels to 20-step buckets for good variety
+        const buckets={};
+        const STEP=20;
+        for(let i=0;i<data.length;i+=4){
+            if(data[i+3]<200) continue; // skip near-transparent
+            const r=Math.round(data[i]/STEP)*STEP;
+            const g=Math.round(data[i+1]/STEP)*STEP;
+            const b=Math.round(data[i+2]/STEP)*STEP;
+            const key=`${r},${g},${b}`;
+            buckets[key]=(buckets[key]||0)+1;
+        }
+
+        const sorted=Object.entries(buckets).sort((a,b)=>b[1]-a[1]);
+        const extracted=[];
+        for(const [key] of sorted){
+            if(extracted.length>=10) break;
+            const [r,g,b]=key.split(',').map(Number);
+            const hex=ColorEngine.rgbToHex(r,g,b);
+            // Dedupe: skip if too similar to already-extracted color (Euclidean dist < 60)
+            const similar=extracted.some(e=>{
+                const er=ColorEngine.hexToRgb(e);
+                return Math.sqrt(Math.pow(er.r-r,2)+Math.pow(er.g-g,2)+Math.pow(er.b-b,2))<60;
+            });
+            if(!similar) extracted.push(hex);
+        }
+
+        let added=0;
+        extracted.forEach(hex=>{
+            if(!state.palette.some(c=>c.hex===hex)&&state.palette.length<14){
+                const name=findNearestColorName(ColorEngine.hexToRgb(hex));
+                state.palette.push({id:Date.now().toString()+Math.random(),hex,name});
+                added++;
+            }
+        });
+        showToast(`Extracted ${added} colors from image`);
+        updateUI();
+    }
+
+    // ---- MODE 2: Manual image pick overlay ----
+    function launchManualImagePicker(imgEl){
+        const existing=document.getElementById('img-pick-overlay');
+        if(existing) existing.remove();
+
+        // Build fullscreen overlay with image + crosshair + magnifier
+        const overlay=document.createElement('div');
+        overlay.id='img-pick-overlay';
+        overlay.style.cssText=`
+            position:fixed;inset:0;z-index:9000;cursor:crosshair;
+            display:flex;align-items:center;justify-content:center;
+            background:rgba(0,0,0,0.92);
+        `;
+
+        // Image display (fit inside viewport, preserve aspect)
+        const imgContainer=document.createElement('div');
+        imgContainer.style.cssText='position:relative;display:inline-block;line-height:0;';
+
+        const displayImg=document.createElement('img');
+        displayImg.src=imgEl.src;
+        displayImg.style.cssText=`
+            max-width:90vw;max-height:85vh;
+            object-fit:contain;display:block;
+            border-radius:8px;
+            box-shadow:0 0 0 1px rgba(255,255,255,0.1), 0 32px 80px rgba(0,0,0,0.7);
+        `;
+
+        // Magnifier circle
+        const mag=document.createElement('div');
+        mag.style.cssText=`
+            position:fixed;width:140px;height:140px;border-radius:50%;
+            border:3px solid white;box-shadow:0 0 0 2px rgba(0,0,0,0.6),0 16px 48px rgba(0,0,0,0.6);
+            pointer-events:none;overflow:hidden;display:none;z-index:9002;
+        `;
+        const magCanvas=document.createElement('canvas');
+        magCanvas.width=140;magCanvas.height=140;
+        mag.appendChild(magCanvas);
+
+        // Color tooltip
+        const tooltip=document.createElement('div');
+        tooltip.style.cssText=`
+            position:fixed;background:rgba(0,0,0,0.95);color:white;
+            padding:6px 14px;border-radius:20px;font-family:'JetBrains Mono',monospace;
+            font-size:12px;pointer-events:none;display:none;z-index:9002;
+            border:1px solid rgba(255,255,255,0.15);white-space:nowrap;
+            transform:translate(-50%,0);
+        `;
+
+        // Color preview swatch in tooltip
+        const swatchPreview=document.createElement('span');
+        swatchPreview.style.cssText='display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:middle;';
+        tooltip.appendChild(swatchPreview);
+        const tooltipText=document.createElement('span');
+        tooltip.appendChild(tooltipText);
+
+        // Hint bar
+        const hint=document.createElement('div');
+        hint.style.cssText=`
+            position:fixed;bottom:32px;left:50%;transform:translateX(-50%);
+            background:rgba(0,0,0,0.9);color:white;
+            padding:10px 24px;border-radius:100px;font-size:13px;z-index:9002;
+            border:1px solid rgba(255,255,255,0.1);pointer-events:none;white-space:nowrap;
+        `;
+        hint.innerHTML='🎨 <strong>Click</strong> to pick a color &nbsp;·&nbsp; <strong>ESC</strong> to cancel';
+
+        imgContainer.appendChild(displayImg);
+        overlay.appendChild(imgContainer);
+        overlay.appendChild(mag);
+        overlay.appendChild(tooltip);
+        overlay.appendChild(hint);
+        document.body.appendChild(overlay);
+
+        // Draw image onto an offscreen canvas for pixel sampling
+        const sampleCanvas=document.createElement('canvas');
+        sampleCanvas.width=imgEl.naturalWidth;
+        sampleCanvas.height=imgEl.naturalHeight;
+        const sampleCtx=sampleCanvas.getContext('2d');
+        sampleCtx.drawImage(imgEl,0,0);
+        const magCtx=magCanvas.getContext('2d');
+
+        function getImgCoords(e){
+            // Map mouse position to image pixel coordinates
+            const rect=displayImg.getBoundingClientRect();
+            const scaleX=imgEl.naturalWidth/rect.width;
+            const scaleY=imgEl.naturalHeight/rect.height;
+            const ix=Math.floor((e.clientX-rect.left)*scaleX);
+            const iy=Math.floor((e.clientY-rect.top)*scaleY);
+            return {ix,iy,inBounds:ix>=0&&iy>=0&&ix<imgEl.naturalWidth&&iy<imgEl.naturalHeight};
+        }
+
+        function onMove(e){
+            const {ix,iy,inBounds}=getImgCoords(e);
+            if(!inBounds){
+                mag.style.display='none';
+                tooltip.style.display='none';
+                return;
+            }
+            mag.style.display='block';
+            tooltip.style.display='block';
+
+            // Position magnifier above cursor
+            const mx=e.clientX,my=e.clientY;
+            mag.style.left=(mx-70)+'px';
+            mag.style.top=(my-155)+'px';
+            // Position tooltip below cursor
+            tooltip.style.left=mx+'px';
+            tooltip.style.top=(my+20)+'px';
+
+            // Sample pixel
+            const px=sampleCtx.getImageData(ix,iy,1,1).data;
+            const hex=ColorEngine.rgbToHex(px[0],px[1],px[2]);
+
+            swatchPreview.style.background=hex;
+            tooltipText.textContent=`${hex}  rgb(${px[0]}, ${px[1]}, ${px[2]})`;
+            tooltip.style.borderColor=hex+'88';
+
+            // Magnifier: draw zoomed region
+            const ZOOM=8;
+            const sw=Math.ceil(140/ZOOM),sh=Math.ceil(140/ZOOM);
+            magCtx.clearRect(0,0,140,140);
+            magCtx.imageSmoothingEnabled=false; // pixelated zoom = accurate
+            magCtx.drawImage(
+                sampleCanvas,
+                Math.max(0,ix-Math.floor(sw/2)), Math.max(0,iy-Math.floor(sh/2)),
+                sw, sh,
+                0, 0, 140, 140
+            );
+            // Centre crosshair
+            magCtx.strokeStyle='rgba(255,255,255,0.9)';
+            magCtx.lineWidth=1.5;
+            magCtx.beginPath();magCtx.moveTo(70,0);magCtx.lineTo(70,140);magCtx.stroke();
+            magCtx.beginPath();magCtx.moveTo(0,70);magCtx.lineTo(140,70);magCtx.stroke();
+        }
+
+        function onClick(e){
+            const {ix,iy,inBounds}=getImgCoords(e);
+            if(!inBounds) return;
+            const px=sampleCtx.getImageData(ix,iy,1,1).data;
+            const hex=ColorEngine.rgbToHex(px[0],px[1],px[2]);
+            cleanup();
+            setActiveColor(hex);
+            showToast(`Picked ${hex} — image closed`);
+        }
+
+        function onKey(e){if(e.key==='Escape'){cleanup();showToast('Image picker cancelled');}}
+
+        function cleanup(){
+            overlay.removeEventListener('mousemove',onMove);
+            overlay.removeEventListener('click',onClick);
+            document.removeEventListener('keydown',onKey);
+            // Fade out
+            overlay.style.transition='opacity 0.25s';
+            overlay.style.opacity='0';
+            setTimeout(()=>overlay.remove(),260);
+        }
+
+        // Only trigger pick when clicking the image itself
+        displayImg.addEventListener('click',onClick);
+        overlay.addEventListener('mousemove',onMove);
+        document.addEventListener('keydown',onKey);
+        // Clicking backdrop = cancel
+        overlay.addEventListener('click',(e)=>{if(e.target===overlay){cleanup();showToast('Image picker cancelled');}});
+    }
+
+    // Drag & drop for image
+    const dropZone=document.getElementById('drop-zone');
+    dropZone.addEventListener('dragover',(e)=>{e.preventDefault();dropZone.classList.add('drag-over');});
+    dropZone.addEventListener('dragleave',()=>dropZone.classList.remove('drag-over'));
+    dropZone.addEventListener('drop',(e)=>{
+        e.preventDefault();
+        dropZone.classList.remove('drag-over');
+        const file=e.dataTransfer.files[0];
+        if(file&&file.type.startsWith('image/')) openImageModeChooser(file);
+    });
+
+    // ============================================================
+    // EXPORT
+    // ============================================================
+    function exportAs(format){
+        if(state.palette.length===0){showToast('Add colors first');return;}
+        switch(format){
+            case 'png': exportPNG(); break;
+            case 'svg': exportSVG(); break;
+            case 'css': exportCSS(); break;
+            case 'json': exportJSON(); break;
+            case 'ase': exportASE(); break;
+        }
+    }
+
+    function exportPNG(){
+        const canvas=els.canvas;
+        const ctx=canvas.getContext('2d');
+        const cols=4,gap=24,margin=60;
+        const cardW=320,cardH=cardW*1.35;
+        const rows=Math.ceil(state.palette.length/cols);
+        const w=cols*(cardW+gap)+margin*2-gap;
+        const headerH=120,footerH=80;
+        const h=headerH+rows*(cardH+gap)+footerH;
+        canvas.width=w;canvas.height=h;
+        ctx.fillStyle='#09090b';ctx.fillRect(0,0,w,h);
+        ctx.fillStyle='#ffffff';ctx.font='bold 36px Inter,sans-serif';
+        ctx.fillText('Hue&Sat Palette',margin,70);
+        ctx.font='18px "JetBrains Mono",monospace';ctx.fillStyle='#71717a';
+        ctx.fillText(new Date().toLocaleDateString(),margin,100);
+        state.palette.forEach((c,i)=>{
+            const col=i%cols,row=Math.floor(i/cols);
+            const x=margin+col*(cardW+gap),y=headerH+row*(cardH+gap);
+            const r=12,ch=cardH*0.72;
+            // Card bg
+            ctx.fillStyle='#ffffff';roundRect(ctx,x,y,cardW,cardH,r);ctx.fill();
+            // Color block
+            ctx.fillStyle=c.hex;roundRect(ctx,x,y,cardW,ch,[r,r,0,0]);ctx.fill();
+            // Text
+            const rgb=ColorEngine.hexToRgb(c.hex);
+            const hsl=ColorEngine.rgbToHsl(rgb.r,rgb.g,rgb.b);
+            const cmyk=ColorEngine.rgbToCmyk(rgb.r,rgb.g,rgb.b);
+            ctx.fillStyle='#000000';ctx.font='bold 16px Inter,sans-serif';
+            ctx.fillText(c.name,x+16,y+ch+28);
+            ctx.fillStyle='#52525b';ctx.font='13px "JetBrains Mono",monospace';
+            ctx.fillText(c.hex,x+16,y+ch+50);
+            ctx.fillStyle='#a1a1aa';ctx.font='11px "JetBrains Mono",monospace';
+            ctx.fillText(`rgb(${rgb.r},${rgb.g},${rgb.b})`,x+16,y+ch+70);
+            ctx.fillText(`hsl(${Math.round(hsl.h)}°,${Math.round(hsl.s)}%,${Math.round(hsl.l)}%)`,x+16,y+ch+88);
+            ctx.fillText(`cmyk(${cmyk.c}%,${cmyk.m}%,${cmyk.y}%,${cmyk.k}%)`,x+16,y+ch+106);
+        });
+        ctx.fillStyle='#27272a';ctx.font='14px Inter,sans-serif';ctx.textAlign='right';
+        ctx.fillText('Generated with Hue&Sat',w-margin,h-30);
+        download(canvas.toDataURL(),'hue-sat-palette.png');
+        showToast('PNG exported!');
+    }
+
+    function roundRect(ctx,x,y,w,h,r){
+        if(!Array.isArray(r)) r=[r,r,r,r];
+        const[tl,tr,br,bl]=r;
+        ctx.beginPath();
+        ctx.moveTo(x+tl,y);ctx.lineTo(x+w-tr,y);ctx.quadraticCurveTo(x+w,y,x+w,y+tr);
+        ctx.lineTo(x+w,y+h-br);ctx.quadraticCurveTo(x+w,y+h,x+w-br,y+h);
+        ctx.lineTo(x+bl,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-bl);
+        ctx.lineTo(x,y+tl);ctx.quadraticCurveTo(x,y,x+tl,y);
+        ctx.closePath();
+    }
+
+    function exportSVG(){
+        const W=200,H=260,GAP=16,COLS=4;
+        const rows=Math.ceil(state.palette.length/COLS);
+        const svgW=COLS*(W+GAP)+GAP;const svgH=rows*(H+GAP)+GAP+60;
+        let shapes='';
+        state.palette.forEach((c,i)=>{
+            const col=i%COLS,row=Math.floor(i/COLS);
+            const x=GAP+col*(W+GAP),y=60+GAP+row*(H+GAP);
+            const rgb=ColorEngine.hexToRgb(c.hex);
+            const hsl=ColorEngine.rgbToHsl(rgb.r,rgb.g,rgb.b);
+            shapes+=`<rect x="${x}" y="${y}" width="${W}" height="${H}" rx="8" fill="${c.hex}"/>
+<rect x="${x}" y="${y+H*0.72}" width="${W}" height="${H*0.28}" rx="0" fill="white" style="rx:0"/>
+<rect x="${x}" y="${y+H*0.68}" width="${W}" height="${H*0.04}" fill="white"/>
+<text x="${x+12}" y="${y+H*0.72+20}" font-family="Inter,sans-serif" font-size="12" font-weight="bold" fill="#000">${c.name}</text>
+<text x="${x+12}" y="${y+H*0.72+38}" font-family="monospace" font-size="10" fill="#666">${c.hex}</text>
+<text x="${x+12}" y="${y+H*0.72+54}" font-family="monospace" font-size="9" fill="#999">hsl(${Math.round(hsl.h)}°,${Math.round(hsl.s)}%,${Math.round(hsl.l)}%)</text>
+`;
+        });
+        const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="${svgW}" height="${svgH}" viewBox="0 0 ${svgW} ${svgH}">
+<rect width="${svgW}" height="${svgH}" fill="#09090b"/>
+<text x="${GAP}" y="40" font-family="Inter,sans-serif" font-size="24" font-weight="bold" fill="white">Hue&amp;Sat Palette</text>
+${shapes}
+<text x="${svgW-GAP}" y="${svgH-12}" font-family="Inter,sans-serif" font-size="12" fill="#444" text-anchor="end">Generated with Hue&amp;Sat</text>
+</svg>`;
+        downloadText(svg,'hue-sat-palette.svg','image/svg+xml');
+        showToast('SVG exported!');
+    }
+
+    function exportCSS(){
+        const lines=['/* Hue&Sat Palette */',`/* Generated: ${new Date().toLocaleDateString()} */`,'',':root {'];
+        state.palette.forEach(c=>{
+            const slug=c.name.toLowerCase().replace(/\s+/g,'-').replace(/[^a-z0-9-]/g,'');
+            const rgb=ColorEngine.hexToRgb(c.hex);
+            const hsl=ColorEngine.rgbToHsl(rgb.r,rgb.g,rgb.b);
+            lines.push(`  --color-${slug}: ${c.hex};`);
+            lines.push(`  --color-${slug}-rgb: ${rgb.r}, ${rgb.g}, ${rgb.b};`);
+            lines.push(`  --color-${slug}-hsl: ${Math.round(hsl.h)}deg, ${Math.round(hsl.s)}%, ${Math.round(hsl.l)}%;`);
+        });
+        lines.push('}');
+        lines.push('');
+        lines.push('/* SCSS variables */');
+        state.palette.forEach(c=>{
+            const slug=c.name.toLowerCase().replace(/\s+/g,'-').replace(/[^a-z0-9-]/g,'');
+            lines.push(`$${slug}: ${c.hex};`);
+        });
+        downloadText(lines.join('\n'),'hue-sat-palette.css','text/css');
+        showToast('CSS/SCSS exported!');
+    }
+
+    function exportJSON(){
+        const data={
+            name:'Hue&Sat Palette',
+            generated:new Date().toISOString(),
+            colors:state.palette.map(c=>{
+                const rgb=ColorEngine.hexToRgb(c.hex);
+                const hsl=ColorEngine.rgbToHsl(rgb.r,rgb.g,rgb.b);
+                const cmyk=ColorEngine.rgbToCmyk(rgb.r,rgb.g,rgb.b);
+                return {name:c.name,hex:c.hex,rgb,hsl:{h:Math.round(hsl.h),s:Math.round(hsl.s),l:Math.round(hsl.l)},cmyk};
+            })
+        };
+        downloadText(JSON.stringify(data,null,2),'hue-sat-palette.json','application/json');
+        showToast('JSON exported!');
+    }
+
+    function exportASE(){
+        // Adobe Swatch Exchange binary format
+        const colorName=(name)=>name.substring(0,31);
+        const buf=[];
+        const writeUint16=(v)=>{buf.push((v>>8)&0xFF,v&0xFF);};
+        const writeUint32=(v)=>{buf.push((v>>24)&0xFF,(v>>16)&0xFF,(v>>8)&0xFF,v&0xFF);};
+        const writeFloat=(v)=>{const arr=new Float32Array([v]);const dv=new DataView(arr.buffer);buf.push(dv.getUint8(3),dv.getUint8(2),dv.getUint8(1),dv.getUint8(0));};
+
+        // Header
+        [0x41,0x53,0x45,0x46].forEach(b=>buf.push(b)); // ASEF
+        writeUint16(1);writeUint16(0); // version
+        writeUint32(state.palette.length); // block count
+
+        state.palette.forEach(c=>{
+            const rgb=ColorEngine.hexToRgb(c.hex);
+            const name=colorName(c.name);
+            const nameBytes=[];
+            for(let i=0;i<name.length;i++){nameBytes.push(0,(name.charCodeAt(i)&0xFF));}
+            nameBytes.push(0,0); // null terminator
+
+            const blockLen=2+(nameBytes.length)+4+3*4+2;
+            writeUint16(0x0001); // color entry block
+            writeUint32(blockLen);
+            writeUint16((name.length+1)); // name length inc null
+            nameBytes.forEach(b=>buf.push(b));
+            [0x52,0x47,0x42,0x20].forEach(b=>buf.push(b)); // RGB space
+            writeFloat(rgb.r/255);
+            writeFloat(rgb.g/255);
+            writeFloat(rgb.b/255);
+            writeUint16(0); // global
+        });
+
+        const bytes=new Uint8Array(buf);
+        const blob=new Blob([bytes],{type:'application/octet-stream'});
+        const url=URL.createObjectURL(blob);
+        const a=document.createElement('a');
+        a.href=url;a.download='hue-sat-palette.ase';a.click();
+        URL.revokeObjectURL(url);
+        showToast('Adobe ASE exported!');
+    }
+
+    function download(url,filename){
+        const a=document.createElement('a');a.href=url;a.download=filename;a.click();
+    }
+    function downloadText(text,filename,type){
+        const blob=new Blob([text],{type});
+        download(URL.createObjectURL(blob),filename);
+    }
+
+    // ============================================================
+    // ============================================================
+    // MODALS
+    // ============================================================
+    function openModal(name){
+        if(name==='export'){
+            // Render CMYK breakdown
+            const {r,g,b}=ColorEngine.hexToRgb(state.activeColor);
+            const cmyk=ColorEngine.rgbToCmyk(r,g,b);
+            const labels=['C','M','Y','K'];
+            const colors=['#00ADEF','#EC008C','#FFF200','#000000'];
+            const textColors=['#000','#fff','#000','#fff'];
+            const vals=[cmyk.c,cmyk.m,cmyk.y,cmyk.k];
+            document.getElementById('cmyk-breakdown').innerHTML=labels.map((l,i)=>`
+                <div class="cmyk-swatch" style="background:${colors[i]};color:${textColors[i]}">
+                    <div class="text-center">
+                        <div class="text-base font-bold">${vals[i]}%</div>
+                        <div class="text-[10px] opacity-70">${l}</div>
+                    </div>
+                </div>
+            `).join('');
+            // CMYK simulation preview
+            const simHex=ColorEngine.cmykPreview(cmyk.c,cmyk.m,cmyk.y,cmyk.k);
+            const simRgb=ColorEngine.hexToRgb(simHex);
+            const origRgb={r,g,b};
+            const err=Math.round((Math.abs(origRgb.r-simRgb.r)+Math.abs(origRgb.g-simRgb.g)+Math.abs(origRgb.b-simRgb.b))/(3*2.55));
+            document.getElementById('cmyk-error').innerHTML=`Print simulation error: <strong>${err}%</strong> · CMYK preview: <span class="inline-block w-4 h-4 rounded align-middle ml-1" style="background:${simHex}"></span> ${simHex}`;
+        }
+        if(name==='history'){
+            const grid=document.getElementById('history-grid');
+            if(state.history.length===0){
+                grid.innerHTML='<p class="text-sm col-span-5 text-center py-4" style="color:var(--text-secondary)">No history yet — pick some colors!</p>';
+            } else {
+                grid.innerHTML=state.history.map(hex=>`
+                    <div class="flex flex-col items-center gap-1 cursor-pointer group" onclick="setActiveColor('${hex}');closeModal('history')">
+                        <div class="w-full aspect-square rounded-xl border-2 border-transparent group-hover:border-white/30 transition-all group-hover:scale-105" style="background:${hex}"></div>
+                        <span class="text-[9px] font-mono" style="color:var(--text-secondary)">${hex}</span>
+                    </div>
+                `).join('');
+            }
+        }
+        document.getElementById(`modal-${name}`).classList.remove('hidden-display');
+        lucide.createIcons();
+    }
+
+    function closeModal(name){
+        document.getElementById(`modal-${name}`).classList.add('hidden-display');
+    }
+
+    // Close modal on overlay click
+    document.querySelectorAll('.modal-overlay').forEach(el=>{
+        el.addEventListener('click',(e)=>{if(e.target===el) el.classList.add('hidden-display');});
+    });
+
+    // ============================================================
+    // TOAST
+    // ============================================================
+    let toastTimeout;
+    function showToast(msg){
+        els.toastMsg.innerText=msg;
+        els.toast.classList.remove('opacity-0','-translate-y-4');
+        els.toast.classList.add('opacity-100','translate-y-0');
+        clearTimeout(toastTimeout);
+        toastTimeout=setTimeout(()=>{
+            els.toast.classList.remove('opacity-100','translate-y-0');
+            els.toast.classList.add('opacity-0','-translate-y-4');
+        },2000);
+    }
+
+    function copyToClipboard(text){
+        navigator.clipboard.writeText(text).then(()=>showToast(`Copied ${text}`)).catch(()=>{
+            const ta=document.createElement('textarea');ta.value=text;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);
+            showToast(`Copied ${text}`);
+        });
+    }
+
+    // ============================================================
+    // PWA
+    // ============================================================
+    let deferredInstall=null;
+    window.addEventListener('beforeinstallprompt',(e)=>{
+        e.preventDefault();
+        deferredInstall=e;
+        document.getElementById('pwa-banner').classList.remove('hidden');
+    });
+
+    function installPwa(){
+        if(deferredInstall){deferredInstall.prompt();deferredInstall=null;}
+        document.getElementById('pwa-banner').classList.add('hidden');
+    }
+    function dismissPwa(){document.getElementById('pwa-banner').classList.add('hidden');}
+
+    // Service Worker
+    if('serviceWorker' in navigator){
+        navigator.serviceWorker.register('sw.js').catch(()=>{});
+    }
+
+    // ============================================================
+    // KEYBOARD SHORTCUTS
+    // ============================================================
+    document.addEventListener('keydown',(e)=>{
+        if(document.activeElement===els.mainDisplay) return;
+        if(e.key==='Escape'){
+            document.querySelectorAll('.modal-overlay').forEach(m=>m.classList.add('hidden-display'));
+        }
+        if(e.ctrlKey&&e.key==='c'){copyToClipboard(state.activeColor);}
+        if(e.ctrlKey&&e.key==='Enter'){addToPalette();}
+    });
+
+    // ============================================================
+    // INIT
+    // ============================================================
+    window.onload=()=>{
+        lucide.createIcons();
+        // Init grid col buttons
+        setGridCols(4);
+        setTimeout(updateUI,0);
+
+        // Add AI Suggest button to sidebar header
+        const paletteHeader=document.querySelector('#palette-list').previousElementSibling;
+        const aiBtn=document.createElement('button');
+        aiBtn.innerHTML='<i data-lucide="sparkles" class="w-3 h-3"></i>';
+        aiBtn.title='AI color suggestions';
+        aiBtn.style.cssText='color:var(--text-secondary);padding:4px;border-radius:6px;transition:all 0.15s;margin-left:auto;';
+        aiBtn.onmouseover=()=>aiBtn.style.color='var(--text-primary)';
+        aiBtn.onmouseout=()=>aiBtn.style.color='var(--text-secondary)';
+        aiBtn.onclick=openAiSuggest;
+        paletteHeader.querySelector('h2').appendChild(aiBtn);
+        lucide.createIcons();
+    };
+
+    els.inputHue.addEventListener('input',()=>updateFromSliders('hue'));
+    els.inputSat.addEventListener('input',()=>updateFromSliders('sat'));
+    els.inputLum.addEventListener('input',()=>updateFromSliders('lum'));
+    els.gridGap.addEventListener('input',(e)=>{state.gridGap=parseInt(e.target.value);renderGrid();});
+    els.gridRadius.addEventListener('input',(e)=>{state.gridRadius=parseInt(e.target.value);renderGrid();});
+    </script>
+</body>
+</html>
+        // Reed-Solomon GF(256) with prime poly 0x11d
+        const GF_EXP = new Uint8Array(512);
+        const GF_LOG = new Uint8Array(256);
+        (() => {
+            let x = 1;
+            for (let i = 0; i < 255; i++) {
+                GF_EXP[i] = x; GF_LOG[x] = i;
+                x <<= 1; if (x & 256) x ^= 0x11d;
+            }
+            for (let i = 255; i < 512; i++) GF_EXP[i] = GF_EXP[i - 255];
+        })();
+        const gfMul = (a, b) => a && b ? GF_EXP[GF_LOG[a] + GF_LOG[b]] : 0;
+        const gfPoly = (ec) => {
+            let p = [1];
+            for (let i = 0; i < ec; i++) {
+                const q = [1, GF_EXP[i]];
+                const r = new Uint8Array(p.length + 1);
+                for (let j = 0; j < p.length; j++) for (let k = 0; k < q.length; k++)
+                    r[j + k] ^= gfMul(p[j], q[k]);
+                p = Array.from(r);
+            }
+            return p.slice(1);
+        };
+        const rsEncode = (data, ec) => {
+            const gen = gfPoly(ec);
+            const res = new Uint8Array(data.length + ec);
+            res.set(data);
+            for (let i = 0; i < data.length; i++) {
+                const c = res[i];
+                if (c) for (let j = 0; j < gen.length; j++)
+                    res[i + 1 + j] ^= gfMul(gen[j], c);
+            }
+            return Array.from(res.slice(data.length));
+        };
+
+        // Version/ECC table: [version, ecWords, dataCapacity(bytes), remainder]
+        const VER = [
+            [1,10,16,0],[2,16,28,7],[3,26,44,7],[4,18,64,7],[5,24,86,7],
+            [6,16,108,7],[7,18,124,0],[8,22,154,0],[9,22,182,0],[10,26,216,0]
+        ];
+
+        // Alignment pattern positions per version
+        const ALIGN = [[],[],[6,18],[6,22],[6,26],[6,30],[6,34],[6,22,38],[6,24,42],[6,26,46]];
+
+        function makeMatrix(ver) {
+            const size = ver * 4 + 17;
+            const m = Array.from({length:size},()=>new Int8Array(size).fill(-1));
+            const set = (r,c,v) => { if(r>=0&&r<size&&c>=0&&c<size) m[r][c]=v; };
+
+            // Finder + format areas
+            const finder = (tr, tc) => {
+                for (let r=-1;r<=7;r++) for (let c=-1;c<=7;c++) {
+                    const v = r<0||r>6||c<0||c>6 ? 0 :
+                              r===0||r===6||c===0||c===6 ? 1 :
+                              r>=2&&r<=4&&c>=2&&c<=4 ? 1 : 0;
+                    set(tr+r, tc+c, v);
+                }
+            };
+            finder(0,0); finder(0,size-7); finder(size-7,0);
+
+            // Timing
+            for (let i=8;i<size-8;i++) {
+                set(6,i,i%2===0?1:0); set(i,6,i%2===0?1:0);
+            }
+
+            // Dark module
+            set(4*ver+9,8,1);
+
+            // Alignment patterns
+            const ap = ALIGN[ver-1];
+            for (const r of ap) for (const c of ap) {
+                if (m[r][c]!==-1) continue;
+                for (let dr=-2;dr<=2;dr++) for (let dc=-2;dc<=2;dc++)
+                    set(r+dr,c+dc, Math.max(Math.abs(dr),Math.abs(dc))===2||dr===0&&dc===0 ? 1 : 0);
+            }
+
+            return m;
+        }
+
+        // Format string for mask 2 (row i%3===0), ECC level M (bits 00)
+        const FORMAT = [
+            0x5412,0x5125,0x5E7C,0x5B4B,0x45F9,0x40CE,0x4F97,0x4AA0,
+            0x77C4,0x72F3,0x7DAA,0x789D,0x662F,0x6318,0x6C41,0x6976,
+            0x1689,0x13BE,0x1CE7,0x19D0,0x0762,0x0255,0x0D0C,0x083B,
+            0x355F,0x3068,0x3F31,0x3A06,0x24B4,0x2183,0x2EDA,0x2BED
+        ];
+
+        function applyFormat(m, maskId, ver) {
+            const size = m.length;
+            const fmt = FORMAT[maskId]; // ECC=M, mask=maskId
+            const bits = [];
+            for (let i=14;i>=0;i--) bits.push((fmt>>i)&1);
+            // Place format bits
+            const pos = [0,1,2,3,4,5,7,8]; // rows/cols around finder
+            for (let i=0;i<6;i++) { m[8][pos[i]]=bits[i]; m[pos[i]][8]=bits[14-i]; }
+            m[8][7]=bits[6]; m[8][8]=bits[7]; m[7][8]=bits[8];
+            for (let i=0;i<7;i++) { m[size-1-i][8]=bits[i]; m[8][size-6+i]=bits[14-i]; }
+        }
+
+        function placeData(m, bits) {
+            const size = m.length;
+            let bi = 0;
+            let up = true;
+            for (let col = size-1; col >= 1; col -= 2) {
+                if (col === 6) col = 5;
+                for (let row = up ? size-1 : 0; up ? row>=0 : row<size; up?row--:row++) {
+                    for (let c = 0; c < 2; c++) {
+                        const cc = col - c;
+                        if (m[row][cc] === -1) {
+                            m[row][cc] = bi < bits.length ? bits[bi++] : 0;
+                        }
+                    }
+                }
+                up = !up;
+            }
+        }
+
+        function applyMask(m, mask) {
+            const size = m.length;
+            // We use mask 2: (row/3)%2===0 → flip data modules only
+            for (let r=0;r<size;r++) for (let c=0;c<size;c++) {
+                if (m[r][c]!==0&&m[r][c]!==1) continue; // reserved
+                // Check if this is a function module (timing, finder, etc.) — skip
+                // We rely on placeData only writing -1 → 0/1, function modules are 0/1 already
+                // Simple approach: all non-format, non-timing modules toggled by mask
+            }
+            // Actually apply mask = 2 (row % 3 == 0) to data region only
+            // We mark format/function as set before placeData, so we track which modules are data
+            // For simplicity use mask 0 (always, checkerboard) which is reliable
+            for (let r=0;r<size;r++) for (let c=0;c<size;c++) {
+                // Only toggle modules placed by placeData (value 0 or 1 but not reserved)
+                // We can't easily distinguish here; skip masking for a working QR
+            }
+        }
+
+        function encode(text) {
+            const bytes = new TextEncoder().encode(text);
+            const len = bytes.length;
+
+            // Find minimum version
+            let ver = 1;
+            for (const [v,,cap] of VER) { if (len <= cap) { ver = v; break; } }
+            const [,ec,,,rem] = [...VER[ver-1], VER[ver-1][3]];
+
+            // Build data codewords
+            const bits = [];
+            const addBits = (val, n) => { for(let i=n-1;i>=0;i--) bits.push((val>>i)&1); };
+            addBits(0b0100, 4); // byte mode
+            addBits(len, 8);
+            bytes.forEach(b => addBits(b, 8));
+            // Terminator
+            for (let i=0;i<4&&bits.length<VER[ver-1][2]*8;i++) bits.push(0);
+            while (bits.length%8) bits.push(0);
+            // Padding bytes
+            const pad = [0xEC, 0x11];
+            let pi = 0;
+            while (bits.length < VER[ver-1][2]*8) { addBits(pad[pi%2],8); pi++; }
+
+            // Data codewords
+            const data = [];
+            for (let i=0;i<bits.length;i+=8) {
+                let b=0; for(let j=0;j<8;j++) b=(b<<1)|bits[i+j];
+                data.push(b);
+            }
+
+            // RS error correction
+            const ecWords = rsEncode(new Uint8Array(data), VER[ver-1][1]);
+            const allWords = [...data, ...ecWords];
+
+            // Remainder bits
+            const finalBits = [];
+            allWords.forEach(w => addBits.call({push:b=>finalBits.push(b)}, w, 8) || (() => { for(let i=7;i>=0;i--) finalBits.push((w>>i)&1); })());
+            // Rebuild finalBits properly
+            const fb = [];
+            allWords.forEach(w => { for(let i=7;i>=0;i--) fb.push((w>>i)&1); });
+            for (let i=0;i<(VER[ver-1][3]||0);i++) fb.push(0);
+
+            // Build matrix
+            const m = makeMatrix(ver);
+            placeData(m, fb);
+
+            // Apply mask 0: (row+col)%2===0
+            const size = m.length;
+            for (let r=0;r<size;r++) for (let c=0;c<size;c++) {
+                if (m[r][c]===0||m[r][c]===1) {
+                    // We can't tell data from function here without extra tracking
+                    // Use a clone trick: mark function modules before placeData
+                }
+            }
+            // For correctness, rebuild with proper masking
+            const m2 = makeMatrix(ver);
+            // Mark which cells are function modules
+            const func = Array.from({length:size},()=>new Uint8Array(size));
+            for(let r=0;r<size;r++) for(let c=0;c<size;c++) if(m2[r][c]!==-1) func[r][c]=1;
+            placeData(m2, fb);
+            // Mask 0: flip data modules where (r+c)%2===0
+            for (let r=0;r<size;r++) for (let c=0;c<size;c++) {
+                if (!func[r][c] && (r+c)%2===0) m2[r][c]^=1;
+            }
+            applyFormat(m2, 0, ver); // mask id=0, ECC=M
+
+            return m2;
+        }
+
+        function toCanvas(canvas, text, opts={}) {
+            const m = encode(text);
+            const size = m.length;
+            const scale = Math.floor((opts.width||200) / (size + 8));
+            const quiet = scale * 4;
+            const dim = size * scale + quiet * 2;
+            canvas.width = canvas.height = dim;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = opts.light || '#ffffff';
+            ctx.fillRect(0,0,dim,dim);
+            ctx.fillStyle = opts.dark || '#000000';
+            for (let r=0;r<size;r++) for (let c=0;c<size;c++) {
+                if (m[r][c]===1) ctx.fillRect(quiet+c*scale, quiet+r*scale, scale, scale);
+            }
+        }
+
+        return { toCanvas, encode };
+    })();
+    </script>
+</body>
+</html>
