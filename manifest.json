@@ -1,0 +1,12 @@
+{
+  "name": "Hue & Sat",
+  "short_name": "Hue&Sat",
+  "description": "Professional color picker & palette tool",
+  "start_url": "/index.html",
+  "display": "standalone",
+  "background_color": "#09090b",
+  "theme_color": "#4F46E5",
+  "icons": [
+    { "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%234F46E5'/><circle cx='35' cy='50' r='18' fill='%23EC4899'/><circle cx='65' cy='50' r='18' fill='%2310B981'/></svg>", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}
